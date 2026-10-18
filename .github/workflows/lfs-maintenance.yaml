@@ -11,6 +11,7 @@ on:
     branches:
       - 'master'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     branches:
       - 'master'
   workflow_dispatch: # enables manual triggering
@@ -19,11 +20,14 @@ on:
         default: 'master'
         type: string
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sync:
-    runs-on: ubuntu-latest
-    # Skip if PR is in draft mode
-    if: (github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)) && !github.event.pull_request.head.repo.fork
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && ((github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)) && !github.event.pull_request.head.repo.fork) }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

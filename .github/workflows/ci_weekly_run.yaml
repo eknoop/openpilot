@@ -7,11 +7,12 @@ on:
         type: string
 
 concurrency:
-  group: ci-run-${{ inputs.run_number }}-${{ github.ref }}
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.run_number || '1' }}
   cancel-in-progress: true
 
 jobs:
   selfdrive_tests:
-    uses: sunnypilot/sunnypilot/.github/workflows/selfdrive_tests.yaml@master
+    if: ${{ github.event.pull_request.draft != true }}
+    uses: ./.github/workflows/selfdrive_tests.yaml
     with:
       run_number: ${{ inputs.run_number }}

@@ -12,7 +12,7 @@ on:
     branches:
       - master
   pull_request_target:
-    types: [ labeled ]
+    types: [labeled, ready_for_review, converted_to_draft]
     branches:
       - 'master'
   workflow_dispatch:
@@ -34,17 +34,13 @@ on:
         type: boolean
 
 concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: ${{ inputs.cancel_in_progress || github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   reset-and-squash:
-    runs-on: ubuntu-latest
-    if: (
-      (github.event_name == 'workflow_dispatch')
-      || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
-      || (contains(github.event_name, 'pull_request') && ((github.event.action == 'labeled' && (github.event.label.name == 'dev-c3' || github.event.label.name == 'trust-fork-pr') && contains(github.event.pull_request.labels.*.name, 'dev-c3'))))
-      )
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (( (github.event_name == 'workflow_dispatch') || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) || (contains(github.event_name, 'pull_request') && ((github.event.action == 'labeled' && (github.event.label.name == 'dev-c3' || github.event.label.name == 'trust-fork-pr') && contains(github.event.pull_request.labels.*.name, 'dev-c3')))) )) }}
     steps:
       - uses: actions/checkout@v4
         with:

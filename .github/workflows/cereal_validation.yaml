@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'cereal/**'
   workflow_dispatch:
@@ -12,11 +13,11 @@ on:
     inputs:
       run_number:
         default: '1'
-        required: true
+        required: false
         type: string
 
 concurrency:
-  group: cereal-validation-ci-run-${{ inputs.run_number }}-${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && github.run_id || github.head_ref || github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.run_number || '1' }}
   cancel-in-progress: true
 
 env:
@@ -27,8 +28,9 @@ env:
 
 jobs:
   generate_cereal_artifact:
+    if: ${{ github.event.pull_request.draft != true }}
     name: Generate cereal validation artifacts
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,8 +55,9 @@ jobs:
           path: cereal/messaging/tests/cereal_validations
 
   validate_cereal_with_upstream:
+    if: ${{ github.event.pull_request.draft != true }}
     name: Validate cereal with Upstream
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     needs: generate_cereal_artifact
     steps:
       - uses: actions/checkout@v4

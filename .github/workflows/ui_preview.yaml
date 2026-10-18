@@ -4,7 +4,7 @@ on:
     branches:
       - master
   pull_request_target:
-    types: [assigned, opened, synchronize, reopened, edited]
+    types: [assigned, opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
     branches:
       - 'master'
     paths:
@@ -17,11 +17,15 @@ env:
   SHA: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && github.sha || github.event.pull_request.head.sha }}
   BRANCH_NAME: "openpilot/pr-${{ github.event.number }}"
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   preview:
-    if: github.repository == 'sunnypilot/sunnypilot'
+    if: ${{ (github.event.pull_request.draft != true) && (github.repository == 'sunnypilot/sunnypilot') }}
     name: preview
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     timeout-minutes: 20
     permissions:
       contents: read

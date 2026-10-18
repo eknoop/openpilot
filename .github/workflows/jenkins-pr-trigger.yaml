@@ -4,11 +4,15 @@ on:
   issue_comment:
     types: [created, edited]
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # TODO: gc old branches in a separate job in this workflow
   scan-comments:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.issue.pull_request }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (github.event.issue.pull_request) }}
     permissions:
       contents: write
       issues: write

@@ -8,11 +8,15 @@ env:
   DOCKER_LOGIN: docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
   BUILD: release/ci/docker_build_sp.sh prebuilt
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build_prebuilt:
     name: build prebuilt
-    runs-on: ubuntu-latest
-    if: github.repository == 'sunnypilot/sunnypilot'
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (github.repository == 'sunnypilot/sunnypilot') }}
     env:
       PUSH_IMAGE: true
     permissions:

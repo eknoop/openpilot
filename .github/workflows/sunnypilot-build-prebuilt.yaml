@@ -24,7 +24,7 @@ on:
     branches: [ master, master-dev-c3-new ]
     tags: [ '*' ]
   pull_request_target:
-    types: [ labeled ]
+    types: [labeled, ready_for_review, converted_to_draft]
   workflow_dispatch:
     inputs:
       wait_for_tests:
@@ -33,10 +33,14 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate_tests:
-    runs-on: ubuntu-24.04
-    if: ((github.event_name == 'workflow_dispatch' && inputs.wait_for_tests) || contains(github.event_name, 'pull_request') && (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (((github.event_name == 'workflow_dispatch' && inputs.wait_for_tests) || contains(github.event_name, 'pull_request') && (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))) }}
     steps:
       - uses: actions/checkout@v4
       - name: Wait for Tests
@@ -56,7 +60,7 @@ jobs:
       version: ${{ steps.set-env.outputs.version }}
       extra_version_identifier: ${{ steps.set-env.outputs.extra_version_identifier }}
       commit_sha: ${{ steps.set-env.outputs.commit_sha }}
-    if: ${{ (always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt')) }}
+    if: ${{ (github.event.pull_request.draft != true) && ((always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -231,9 +235,9 @@ jobs:
     concurrency:
       group: publish-${{ github.head_ref || github.ref_name }}
       cancel-in-progress: true
-    if: ${{ (always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt')) }}
+    if: ${{ (github.event.pull_request.draft != true) && ((always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))) }}
     needs: [ build ]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     environment: ${{ (contains(fromJSON(vars.AUTO_DEPLOY_PREBUILT_BRANCHES), github.head_ref || github.ref_name) || contains(github.event.pull_request.labels.*.name, 'prebuilt')) && 'auto-deploy' || 'feature-branch' }}
     steps:
       - uses: actions/checkout@v4
@@ -277,8 +281,8 @@ jobs:
 
   notify:
     needs: [ build, publish ]
-    runs-on: ubuntu-24.04
-    if: ${{ (always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt')) }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && ((always() && !failure() && !cancelled()) && (!contains(github.event_name, 'pull_request') || (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))) }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Alpine Linux environment
@@ -309,8 +313,8 @@ jobs:
 
   manage-pr-labels:
     name: Remove prebuilt label
-    runs-on: ubuntu-latest
-    if: (always() && contains(github.event_name, 'pull_request') && (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && ((always() && contains(github.event_name, 'pull_request') && (github.event.action == 'labeled' && github.event.label.name == 'prebuilt'))) }}
     env:
       LABEL: prebuilt
     steps:

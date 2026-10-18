@@ -7,7 +7,7 @@ on:
       ci_runs:
         description: 'The amount of runs to trigger in CI test report'
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -15,8 +15,8 @@ env:
 
 jobs:
   setup:
-    if: github.repository == 'sunnypilot/sunnypilot'
-    runs-on: ubuntu-latest
+    if: ${{ (github.event.pull_request.draft != true) && (github.repository == 'sunnypilot/sunnypilot') }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     outputs:
       ci_runs: ${{ steps.ci_runs_setup.outputs.matrix }}
     steps:
@@ -27,18 +27,19 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   ci_matrix_run:
+    if: ${{ github.event.pull_request.draft != true }}
     needs: [ setup ]
     strategy:
       fail-fast: false
       matrix: ${{fromJSON(needs.setup.outputs.ci_runs)}}
-    uses: sunnypilot/sunnypilot/.github/workflows/ci_weekly_run.yaml@master
+    uses: ./.github/workflows/ci_weekly_run.yaml
     with:
       run_number: ${{ matrix.run_number }}
 
   report:
     needs: [ci_matrix_run]
-    runs-on: ubuntu-latest
-    if: always()
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (always()) }}
     steps:
       - name: Get job results
         uses: actions/github-script@v7

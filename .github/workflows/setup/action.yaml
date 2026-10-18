@@ -1,4 +1,5 @@
 name: 'openpilot env setup'
+description: Prepare OpenPilot build caches and its CI Docker image.
 
 inputs:
   is_retried:

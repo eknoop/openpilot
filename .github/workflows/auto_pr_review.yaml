@@ -1,16 +1,21 @@
 name: "PR review"
 on:
   pull_request_target:
-    types: [ opened, reopened, synchronize, edited ]
+    types: [opened, reopened, synchronize, edited, ready_for_review, converted_to_draft]
+
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   labeler:
+    if: ${{ github.event.pull_request.draft != true }}
     name: review
     permissions:
       contents: read
       pull-requests: write
       issues: write
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -37,8 +42,8 @@ jobs:
 
   update-pr-labels:
     name: Update fork's PR Labels
-    runs-on: ubuntu-latest
-    if: (github.event.pull_request.head.repo.fork && (contains(github.event_name, 'pull_request') && github.event.action == 'synchronize'))
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && ((github.event.pull_request.head.repo.fork && (contains(github.event_name, 'pull_request') && github.event.action == 'synchronize'))) }}
     env:
       PR_LABEL: 'dev-c3'
       TRUST_FORK_PR_LABEL: 'trust-fork-pr'

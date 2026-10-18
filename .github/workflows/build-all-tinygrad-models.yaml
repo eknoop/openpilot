@@ -8,9 +8,14 @@ on:
         required: true
         type: string
 
+concurrency:
+  group: unraid-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.draft != true }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     outputs:
       json_version: ${{ steps.get-json.outputs.json_version }}
       recompiled_dir: ${{ steps.create-recompiled-dir.outputs.recompiled_dir }}
@@ -111,6 +116,7 @@ jobs:
           git push origin gh-pages
 
   get_and_build:
+    if: ${{ github.event.pull_request.draft != true }}
     needs: [setup]
     strategy:
       matrix:
@@ -126,8 +132,8 @@ jobs:
 
   retry_failed_models:
     needs: [setup, get_and_build]
-    runs-on: ubuntu-latest
-    if: ${{ needs.setup.result != 'failure' && !cancelled() }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
+    if: ${{ (github.event.pull_request.draft != true) && (needs.setup.result != 'failure' && !cancelled()) }}
     outputs:
       retry_matrix: ${{ steps.set-retry-matrix.outputs.retry_matrix }}
     steps:
@@ -148,7 +154,7 @@ jobs:
 
   retry_get_and_build:
     needs: [setup, get_and_build, retry_failed_models]
-    if: ${{ needs.get_and_build.result == 'failure' || (needs.retry_failed_models.outputs.retry_matrix != '[]' && needs.retry_failed_models.outputs.retry_matrix != '') }}
+    if: ${{ (github.event.pull_request.draft != true) && (needs.get_and_build.result == 'failure' || (needs.retry_failed_models.outputs.retry_matrix != '[]' && needs.retry_failed_models.outputs.retry_matrix != '')) }}
     strategy:
       matrix:
         model: ${{ fromJson(needs.retry_failed_models.outputs.retry_matrix) }}
@@ -165,8 +171,8 @@ jobs:
   publish_models:
     name: Publish models sequentially
     needs: [setup, get_and_build, retry_failed_models, retry_get_and_build]
-    if: ${{ !cancelled() && (needs.get_and_build.result != 'failure' || needs.retry_get_and_build.result == 'success' || (needs.retry_failed_models.outputs.retry_matrix != '[]' && needs.retry_failed_models.outputs.retry_matrix != '')) }}
-    runs-on: ubuntu-latest
+    if: ${{ (github.event.pull_request.draft != true) && (!cancelled() && (needs.get_and_build.result != 'failure' || needs.retry_get_and_build.result == 'success' || (needs.retry_failed_models.outputs.retry_matrix != '[]' && needs.retry_failed_models.outputs.retry_matrix != ''))) }}
+    runs-on: ${{ (github.event_name != 'pull_request_target' && github.event_name != 'issue_comment' && github.event_name != 'pull_request_review' && (!github.event.pull_request.head.repo.full_name || github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted", "Linux", "X64", "roadie", "unraid"]') || fromJSON('["ubuntu-24.04"]') }}
     strategy:
       max-parallel: 1
       matrix:

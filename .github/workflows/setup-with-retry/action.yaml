@@ -1,4 +1,5 @@
 name: 'openpilot env setup, with retry on failure'
+description: Prepare the OpenPilot CI environment with bounded retries.
 
 inputs:
   docker_hub_pat:

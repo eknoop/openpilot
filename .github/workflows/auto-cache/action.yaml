@@ -1,4 +1,5 @@
 name: 'automatically cache based on current runner'
+description: Restore build caches for the current runner.
 
 inputs:
   path:
